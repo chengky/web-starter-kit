@@ -31,6 +31,7 @@ import del from 'del';
 import runSequence from 'run-sequence';
 import browserSync from 'browser-sync';
 import swPrecache from 'sw-precache';
+import babel from 'gulp-babel';
 import gulpLoadPlugins from 'gulp-load-plugins';
 import {output as pagespeed} from 'psi';
 import pkg from './package.json';
@@ -120,6 +121,24 @@ gulp.task('scripts', () => {
     .pipe($.size({title: 'scripts'}));
 });
 
+// Concatenate and minify JavaScript including compiling ES6 code to ES3.
+// If you'd like to use ES6 rename this task 'scripts' and delete the 'scripts'
+// gulp task above.
+gulp.task('es6Scripts', () =>
+    gulp.src(['app/scripts/**/*.js'])
+      .pipe($.sourcemaps.init())
+      .pipe($.changed('.tmp/scripts', {extension: '.js'}))
+      .pipe(babel())
+      .pipe($.sourcemaps.write())
+      .pipe(gulp.dest('.tmp/scripts'))
+      .pipe($.concat('main.min.js'))
+      .pipe($.uglify({preserveComments: 'some'}))
+      // Output files
+      .pipe($.sourcemaps.write())
+      .pipe(gulp.dest('dist/scripts'))
+      .pipe($.size({title: 'scripts'}))
+);
+
 // Scan your HTML for assets & optimize them
 gulp.task('html', () => {
   const assets = $.useref.assets({searchPath: '{.tmp,app}'});
@@ -158,7 +177,7 @@ gulp.task('clean', cb => del(['.tmp', 'dist/*', '!dist/.git'], {dot: true},
   cb));
 
 // Watch files for changes & reload
-gulp.task('serve', ['styles'], () => {
+gulp.task('serve', ['scripts', 'styles'], () => {
   browserSync({
     notify: false,
     // Customize the BrowserSync console logging prefix
@@ -172,7 +191,7 @@ gulp.task('serve', ['styles'], () => {
 
   gulp.watch(['app/**/*.html'], reload);
   gulp.watch(['app/styles/**/*.{scss,css}'], ['styles', reload]);
-  gulp.watch(['app/scripts/**/*.js'], ['jshint']);
+  gulp.watch(['app/scripts/**/*.js'], ['jshint', 'scripts']);
   gulp.watch(['app/images/**/*'], reload);
 });
 
